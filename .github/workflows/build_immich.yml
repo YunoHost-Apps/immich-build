@@ -234,10 +234,10 @@ jobs:
       # Thanks to:
       #   - https://github.com/arter97/immich-native
       #   - https://github.com/community-scripts/ProxmoxVE/blob/main/install/immich-install.sh
-	  # Check for changes :
-	  #   - https://github.com/immich-app/base-images/blob/main/server/Dockerfile
-	  #   - https://github.com/immich-app/base-images/blob/main/postgres/versions.yaml
-	  #   - ...
+      # Check for changes:
+      #   - https://github.com/immich-app/base-images/blob/main/server/Dockerfile
+      #   - https://github.com/immich-app/base-images/blob/main/postgres/versions.yaml
+      #   - ...
       ##########################################################################
 
       - name: Build immich
@@ -744,4 +744,5 @@ jobs:
         with:
           name: |
             immich-*
+            meta-*
             global-manifest
