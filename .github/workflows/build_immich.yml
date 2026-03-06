@@ -705,6 +705,8 @@ jobs:
 
             [Upstream changelog](https://github.com/immich-app/immich/releases/tag/v${{ needs.prepare.outputs.immich_version }})
 
+            ---
+
             ## 📦 Component Versions
 
             **Source Components**
