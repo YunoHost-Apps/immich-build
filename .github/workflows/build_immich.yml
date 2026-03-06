@@ -392,7 +392,7 @@ jobs:
           mise install
           mise run build
           mkdir -p "$plugin_dir/dist"
-          cp -r ./dist "$plugin_dir/dist"
+          cp -r ./dist "$plugin_dir/"
           cp ./manifest.json "$plugin_dir/"
           echo "::endgroup::"
 
