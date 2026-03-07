@@ -10,7 +10,7 @@ on:
       arch:
         description: 'CPU architecture to build (comma-separated: amd64, arm64)'
         required: true
-        default: 'amd64'
+        default: 'amd64, arm64'
 
   # schedule:
     # - cron: '0 2 * * *'
@@ -132,6 +132,7 @@ jobs:
 
     outputs:
       mise_version: ${{ steps.install-mise.outputs.mise_version }}
+      uv_version:   ${{ steps.build-immich.outputs.uv_version }}
       exec_time:    ${{ steps.build-immich.outputs.exec_time }}
       peak_ram:     ${{ steps.build-immich.outputs.peak_ram }}
       disk_used:    ${{ steps.build-immich.outputs.disk_used }}
@@ -222,10 +223,11 @@ jobs:
             exit 1
           fi
           chmod 755 /usr/local/bin/mise
-
-
           mise_version=$(mise version --json | jq -r .version)
           echo "mise_version=$mise_version" >> $GITHUB_OUTPUT
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
 
 
 
@@ -257,7 +259,6 @@ jobs:
           plugin_dir="${{ needs.prepare.outputs.plugin_dir }}"
           ml_dir="${{ needs.prepare.outputs.ml_dir }}"
           ml_cache_dir="${{ needs.prepare.outputs.ml_cache_dir }}"
-
           mkdir -p "$install_dir" "$source_dir" "$vips_dir" "$app_dir" "$plugin_dir" "$ml_dir" "$ml_cache_dir"
           echo "::endgroup::"
 
@@ -411,15 +412,16 @@ jobs:
           ######################################################################
           echo "::group::🧠 Building ML stack"
           cd "$source_dir/machine-learning"
-          mise use uv@latest --quiet
+          uv_version=$(uv --version | cut -d' ' -f2)
+          echo "uv_version=$uv_version" >> $GITHUB_OUTPUT
           export UV_PYTHON_INSTALL_DIR="$ml_dir"
-          mise exec -- uv venv "$ml_dir/venv" \
+          uv venv "$ml_dir/venv" \
             --link-mode copy \
             --python "${{ needs.prepare.outputs.python_version }}" \
             --managed-python
           source "$ml_dir/venv/bin/activate"
-          mise exec -- uv sync --offline --locked --active --extra cpu --no-dev || \
-            mise exec -- uv sync --locked --active --extra cpu --no-dev
+          uv sync --offline --locked --active --extra cpu --no-dev || \
+            uv sync --locked --active --extra cpu --no-dev
           cp -a ann "$ml_dir/"
           cp -a immich_ml "$ml_dir/"
           echo "::endgroup::"
@@ -429,17 +431,14 @@ jobs:
           # STATS END
           ######################################################################
           echo "::group::⏱️ Ending statistics"
-
           date_after=$(date +%s)
           disk_after=$(df -k / | tail -1 | awk '{print $3}')
           dur=$((date_after - date_before))
-
           if [ -f /sys/fs/cgroup/memory.peak ]; then
             peak=$(cat /sys/fs/cgroup/memory.peak)
           else
             peak=0
           fi
-
           echo "exec_time=$(printf '%02d:%02d:%02d' $((dur/3600)) $((dur%3600/60)) $((dur%60)))" >> $GITHUB_OUTPUT
           echo "disk_used=$(awk -v a="$disk_after" -v b="$disk_before" 'BEGIN{ printf "%.2fGB",(a-b)/1024/1024 }')" >> $GITHUB_OUTPUT
           echo "peak_ram=$(awk -v v="$peak" 'BEGIN{ printf "%.2fGB",v/1024/1024/1024 }')" >> $GITHUB_OUTPUT
@@ -455,13 +454,10 @@ jobs:
         shell: bash
         run: |
           echo "::group::📦 Creating final tarball"
-
           immich="${{ needs.prepare.outputs.immich_version }}"
           cd /var/www
-
           tar czf "immich-v${immich}-${{ matrix.debian }}-${{ matrix.arch }}.tar.gz" immich
           mv immich-v*.tar.gz /tmp/
-
           echo "::endgroup::"
 
 
@@ -482,6 +478,7 @@ jobs:
           pnpm="${{ needs.prepare.outputs.pnpm_version }}"
           python="${{ needs.prepare.outputs.python_version }}"
           mise="${{ steps.install-mise.outputs.mise_version }}"
+          uv="${{ steps.build-immich.outputs.uv_version }}"
           exec_time="${{ steps.build-immich.outputs.exec_time }}"
           peak_ram="${{ steps.build-immich.outputs.peak_ram }}"
           disk_used="${{ steps.build-immich.outputs.disk_used }}"
@@ -502,6 +499,7 @@ jobs:
             --arg pnpm "$pnpm" \
             --arg python "$python" \
             --arg mise "$mise" \
+            --arg uv "$uv" \
             --arg exec_time "$exec_time" \
             --arg peak_ram "$peak_ram" \
             --arg disk_used "$disk_used" \
@@ -517,6 +515,7 @@ jobs:
               pnpm_version:    $pnpm,
               python_version:  $python,
               mise_version:    $mise,
+              uv_version:      $uv,
               exec_time:       $exec_time,
               peak_ram:        $peak_ram,
               disk_used:       $disk_used
@@ -558,6 +557,7 @@ jobs:
     if: needs.prepare.outputs.should_build == 'true'
     outputs:
       mise_version: ${{ steps.collect.outputs.mise }}
+      uv_version:   ${{ steps.collect.outputs.uv }}
       exec_time:    ${{ steps.collect.outputs.exec_time }}
       peak_ram:     ${{ steps.collect.outputs.peak_ram }}
       disk_used:    ${{ steps.collect.outputs.disk_used }}
@@ -587,17 +587,20 @@ jobs:
           first_meta=$(ls meta/meta-*.json 2>/dev/null | head -n1 || true)
           if [ -n "$first_meta" ]; then
             mise=$(jq -r '.mise_version' "$first_meta")
+            uv=$(jq -r '.uv_version' "$first_meta")
             exec_time=$(jq -r '.exec_time' "$first_meta")
             peak_ram=$(jq -r '.peak_ram' "$first_meta")
             disk_used=$(jq -r '.disk_used' "$first_meta")
           else
             mise="unknown"
+            uv="unknown"
             exec_time="unknown"
             peak_ram="unknown"
             disk_used="unknown"
           fi
 
           echo "mise=$mise"           >> "$GITHUB_OUTPUT"
+          echo "uv=$uv"           >> "$GITHUB_OUTPUT"
           echo "exec_time=$exec_time" >> "$GITHUB_OUTPUT"
           echo "peak_ram=$peak_ram"   >> "$GITHUB_OUTPUT"
           echo "disk_used=$disk_used" >> "$GITHUB_OUTPUT"
@@ -611,6 +614,7 @@ jobs:
             --arg pnpm "$pnpm" \
             --arg python "$python" \
             --arg mise "$mise" \
+            --arg uv "$uv" \
             --arg exec_time "$exec_time" \
             --arg peak_ram "$peak_ram" \
             --arg disk_used "$disk_used" \
@@ -620,6 +624,7 @@ jobs:
               pnpm_version:   $pnpm,
               python_version: $python,
               mise_version:   $mise,
+              uv_version:     $uv,
               exec_time:      $exec_time,
               peak_ram:       $peak_ram,
               disk_used:      $disk_used
@@ -719,6 +724,7 @@ jobs:
             - pnpm: `${{ needs.prepare.outputs.pnpm_version }}`
             - Python: `${{ needs.prepare.outputs.python_version }}`
             - mise: `${{ needs.manifest.outputs.mise_version }}`
+            - uv: `${{ needs.manifest.outputs.uv_version }}`
 
             ---
 
