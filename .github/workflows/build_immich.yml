@@ -403,7 +403,6 @@ jobs:
           ######################################################################
           echo "::group::➡️ Updating static assets"
           cp "$source_dir/LICENSE" "$app_dir/"
-          rm "$app_dir/bin/start.sh"
           echo "::endgroup::"
 
 
@@ -424,6 +423,15 @@ jobs:
             uv sync --locked --active --extra cpu --no-dev
           cp -a ann "$ml_dir/"
           cp -a immich_ml "$ml_dir/"
+          echo "::endgroup::"
+
+
+          ######################################################################
+          # CLEANUP
+          ######################################################################
+          echo "::group::🧹 Cleaning"
+          rm -Rf "$source_dir"
+          rm "$app_dir/bin/start.sh"
           echo "::endgroup::"
 
 
