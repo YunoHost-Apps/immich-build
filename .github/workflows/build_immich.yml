@@ -12,8 +12,8 @@ on:
         required: true
         default: 'amd64, arm64'
 
-  # schedule:
-    # - cron: '0 2 * * *'
+  schedule:
+    - cron: '0 2 * * *'
 
 jobs:
 
