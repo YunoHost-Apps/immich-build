@@ -539,14 +539,14 @@ jobs:
       ##########################################################################
 
       - name: Upload tarballs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: "immich-${{ matrix.debian }}-${{ matrix.arch }}"
           path: /tmp/immich-v*-*.tar.gz
           retention-days: 1
 
       - name: Upload meta JSON
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: "meta-${{ matrix.debian }}-${{ matrix.arch }}"
           path: "/tmp/meta-${{ matrix.debian }}-${{ matrix.arch }}.json"
@@ -574,7 +574,7 @@ jobs:
     steps:
 
       - name: 📥 Download meta JSON files
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: "meta-*"
           path: meta
@@ -668,7 +668,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Upload final global manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: global-manifest
           path: /tmp/immich-v*-manifest.json
@@ -695,7 +695,7 @@ jobs:
       # DOWNLOAD ARTIFACTS
       ######################################################################
       - name: 📥 Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
