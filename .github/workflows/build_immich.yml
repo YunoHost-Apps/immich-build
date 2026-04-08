@@ -10,7 +10,7 @@ on:
       arch:
         description: 'CPU architecture to build (comma-separated: amd64, arm64)'
         required: true
-        default: 'amd64, arm64'
+        default: 'amd64,arm64'
 
   schedule:
     - cron: '0 2 * * *'
@@ -93,7 +93,7 @@ jobs:
             arch="${{ github.event.inputs.arch }}"
           else
             debian="bookworm,trixie"
-            arch="amd64"
+            arch="amd64,arm64"
           fi
 
           MATRIX_DEBIAN=$(echo "$debian" | jq -R -s -c 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
@@ -704,7 +704,7 @@ jobs:
       # CREATE RELEASE
       ######################################################################
       - name: 🚀 Publish GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: immich-v${{ needs.prepare.outputs.immich_version }}
           name:     "immich v${{ needs.prepare.outputs.immich_version }}"
@@ -754,7 +754,7 @@ jobs:
       # CLEAN ARTIFACTS (optional)
       ######################################################################
       - name: 🧹 Delete uploaded artifacts
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: |
             immich-*
