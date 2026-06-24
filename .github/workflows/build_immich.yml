@@ -42,7 +42,7 @@ jobs:
       source_dir:      /var/www/immich/source
       vips_dir:        /var/www/immich/vips
       app_dir:         /var/www/immich/immich/app
-      plugin_dir:      /var/www/immich/immich/app/corePlugin
+      plugin_dir:      /var/www/immich/immich/app/plugins/immich-plugin-core
       ml_dir:          /var/www/immich/immich/app/machine-learning
       ml_cache_dir:    /var/www/immich/immich/.cache_ml
 
@@ -359,10 +359,17 @@ jobs:
           export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
           export CI=1
           export SHARP_IGNORE_GLOBAL_LIBVIPS=true
-          pnpm --filter immich --frozen-lockfile build
+          pnpm --filter @immich/sdk --filter @immich/plugin-sdk --filter immich build
           unset SHARP_IGNORE_GLOBAL_LIBVIPS
           export SHARP_FORCE_GLOBAL_LIBVIPS=true
-          pnpm --filter immich --frozen-lockfile --prod --no-optional deploy "$app_dir" --force
+          pnpm --filter immich --prod --no-optional deploy "$app_dir"
+          # Patch helmet.json: disable upgrade-insecure-requests for HTTP access
+          if [[ -f "$app_dir/helmet.json" ]]; then
+            jq '.contentSecurityPolicy.directives["upgrade-insecure-requests"] = null' "$app_dir/helmet.json" > "$app_dir/helmet.json.tmp"
+            #TODO
+            mv "$app_dir/helmet.json" "$app_dir/helmet.json.old"
+            mv "$app_dir/helmet.json.tmp" "$app_dir/helmet.json"
+          fi
           cp "$app_dir/package.json" "$app_dir/bin/"
           sed -i "s@^start@./start@g" "$app_dir/bin/immich-admin"
           echo "::endgroup::"
@@ -371,25 +378,15 @@ jobs:
           ######################################################################
           # WEB
           ######################################################################
-          echo "::group::🌐 Building immich web + sdk"
+          echo "::group::🌐 Building immich web + sdk + cli"
           cd "$source_dir"
           pnpm --filter @immich/sdk --filter immich-web --frozen-lockfile --force install
           unset SHARP_FORCE_GLOBAL_LIBVIPS
           export SHARP_IGNORE_GLOBAL_LIBVIPS=true
-          pnpm --filter @immich/sdk --filter immich-web build
-          cp -a web/build "$app_dir/www/"
-          echo "::endgroup::"
-
-
-          ######################################################################
-          # CLI
-          ######################################################################
-          echo "::group::🔧 Building immich CLI"
-          cd "$source_dir"
-          pnpm --filter @immich/sdk --filter @immich/cli --frozen-lockfile install
-          pnpm --filter @immich/sdk --filter @immich/cli build
+          pnpm --filter @immich/sdk --filter immich-web --filter @immich/cli build
           pnpm --filter @immich/cli --prod --no-optional deploy "$app_dir/cli"
-          ln -s "$app_dir/cli/bin/immich" "$app_dir/bin/immich"
+          cp -a web/build "$app_dir/www/"
+          cp LICENSE "$app_dir"
           echo "::endgroup::"
 
 
@@ -398,22 +395,12 @@ jobs:
           ######################################################################
           echo "::group::🔌 Building immich plugins"
           cd "$source_dir"
-          mise trust --ignore ./mise.toml
-          mise trust ./plugins/mise.toml
-          cd plugins
-          mise install
-          mise run build
+          export MISE_TRUSTED_CONFIG_PATHS="$source_dir"/mise.toml
+          export MISE_DISABLE_TOOLS=github:jellyfin/jellyfin-ffmpeg
+          mise //:plugins
           mkdir -p "$plugin_dir/dist"
-          cp -r ./dist "$plugin_dir/"
-          cp ./manifest.json "$plugin_dir/"
-          echo "::endgroup::"
-
-
-          ######################################################################
-          # ASSETS
-          ######################################################################
-          echo "::group::➡️ Updating static assets"
-          cp "$source_dir/LICENSE" "$app_dir/"
+          cp -r ./packages/plugin-core/dist "$plugin_dir/dist"
+          cp ./packages/plugin-core/manifest.json "$plugin_dir"
           echo "::endgroup::"
 
 
@@ -441,8 +428,9 @@ jobs:
           # CLEANUP
           ######################################################################
           echo "::group::🧹 Cleaning"
-          rm -Rf "$source_dir"
-          rm "$app_dir/bin/start.sh"
+          #TODO
+          #rm -Rf "$source_dir"
+          #rm "$app_dir/bin/start.sh"
           echo "::endgroup::"
 
 
