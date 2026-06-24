@@ -47,28 +47,23 @@ jobs:
       ml_cache_dir:    /var/www/immich/immich/.cache_ml
 
     steps:
-			- name: Resolve immich version
-				id: resolve-version
-				shell: bash
-				run: |
-					set -euo pipefail
-
 
       - name: Get upstream versions
         id: get-versions
         shell: bash
         run: |
           set -euo pipefail
-					if [ -n "${{ github.event.inputs.immich_version }}" ]; then
-						# Manual mode with version in immich_version input
-						IMMICH_VERSION="${{ github.event.inputs.immich_version }}"
-						IMMICH_VERSION="${IMMICH_VERSION#v}"						
-					else
-						# Cron or manual mode without version in input => use latest
-						IMMICH_VERSION=$(curl -sIL https://github.com/immich-app/immich/releases/latest \
-							| grep -i location | sed -n 's@.*/tag/v\([^"]*\).*@\1@p' | tr -d '\r[:space:]')
-					fi
-					echo "immich_version=$IMMICH_VERSION" >> $GITHUB_OUTPUT
+
+          if [ -n "${{ github.event.inputs.immich_version }}" ]; then
+            # Manual mode with version in immich_version input
+            IMMICH_VERSION="${{ github.event.inputs.immich_version }}"
+            IMMICH_VERSION="${IMMICH_VERSION#v}"						
+          else
+            # Cron or manual mode without version in input => use latest
+            IMMICH_VERSION=$(curl -sIL https://github.com/immich-app/immich/releases/latest \
+              | grep -i location | sed -n 's@.*/tag/v\([^"]*\).*@\1@p' | tr -d '\r[:space:]')
+          fi
+          echo "immich_version=$IMMICH_VERSION" >> $GITHUB_OUTPUT
 
           NODE_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/base-images/refs/heads/main/server/Dockerfile \
             | sed -nE 's@.*node:([0-9]+\.[0-9]+\.[0-9]+).*@\1@p' | head -n1)
