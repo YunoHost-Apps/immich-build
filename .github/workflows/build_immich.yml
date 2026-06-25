@@ -362,7 +362,7 @@ jobs:
           pnpm --filter @immich/sdk --filter @immich/plugin-sdk --filter immich build
           unset SHARP_IGNORE_GLOBAL_LIBVIPS
           export SHARP_FORCE_GLOBAL_LIBVIPS=true
-          pnpm --filter immich --prod --no-optional deploy "$app_dir"
+          pnpm --filter immich --prod --no-optional deploy "$app_dir" --force
           # Patch helmet.json: disable upgrade-insecure-requests for HTTP access
           if [[ -f "$app_dir/helmet.json" ]]; then
             jq '.contentSecurityPolicy.directives["upgrade-insecure-requests"] = null' "$app_dir/helmet.json" > "$app_dir/helmet.json.tmp"
