@@ -82,7 +82,7 @@ jobs:
           VIPS_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/base-images/main/server/sources/libvips.json | jq -r '.version')
           echo "vips_version=$VIPS_VERSION" >> $GITHUB_OUTPUT
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Check if release already exists
         id: check-version
@@ -155,7 +155,7 @@ jobs:
           apt-get update
           apt-get install -y git ca-certificates
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -238,7 +238,7 @@ jobs:
           echo "mise_version=$mise_version" >> $GITHUB_OUTPUT
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8
 
 
 
@@ -703,7 +703,7 @@ jobs:
       # CREATE RELEASE
       ######################################################################
       - name: 🚀 Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: immich-v${{ needs.prepare.outputs.immich_version }}
           name:     "immich v${{ needs.prepare.outputs.immich_version }}"
