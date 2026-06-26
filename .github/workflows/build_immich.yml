@@ -328,9 +328,9 @@ jobs:
 
 
           ######################################################################
-          # PATCHES
+          # PATCHES SOURCE
           ######################################################################
-          echo "::group::🩹 Applying patches"
+          echo "::group::🩹 Applying patches to source"
           cd "$source_dir"
 
           # Replace /usr/src
@@ -345,8 +345,14 @@ jobs:
 
           # Fix extism/js-pdk for bookworm
           if [ "${{ matrix.debian }}" = "bookworm" ]; then
-            sed -i 's@github:extism/js-pdk@github:ewilly/js-pdk@g' "$source_dir/plugins/mise.toml"
+            sed -i 's@github:extism/js-pdk@github:ewilly/js-pdk@g' "mise.toml"
           fi
+
+          # Patch helmet.json: disable upgrade-insecure-requests for HTTP access (cf. https://github.com/community-scripts/ProxmoxVE/issues/13597)
+          # if [[ -f "server/helmet.json" ]]; then
+          #   jq '.contentSecurityPolicy.directives["upgrade-insecure-requests"] = null' "server/helmet.json" > "server/helmet.json.tmp"
+          #   mv "server/helmet.json.tmp" "server/helmet.json"
+          # fi
 
           echo "::endgroup::"
 
@@ -363,13 +369,6 @@ jobs:
           unset SHARP_IGNORE_GLOBAL_LIBVIPS
           export SHARP_FORCE_GLOBAL_LIBVIPS=true
           pnpm --filter immich --prod --no-optional deploy "$app_dir" --force
-          # Patch helmet.json: disable upgrade-insecure-requests for HTTP access
-          if [[ -f "$app_dir/helmet.json" ]]; then
-            jq '.contentSecurityPolicy.directives["upgrade-insecure-requests"] = null' "$app_dir/helmet.json" > "$app_dir/helmet.json.tmp"
-            #TODO
-            mv "$app_dir/helmet.json" "$app_dir/helmet.json.old"
-            mv "$app_dir/helmet.json.tmp" "$app_dir/helmet.json"
-          fi
           cp "$app_dir/package.json" "$app_dir/bin/"
           sed -i "s@^start@./start@g" "$app_dir/bin/immich-admin"
           echo "::endgroup::"
@@ -428,9 +427,8 @@ jobs:
           # CLEANUP
           ######################################################################
           echo "::group::🧹 Cleaning"
-          #TODO
-          #rm -Rf "$source_dir"
-          #rm "$app_dir/bin/start.sh"
+          rm -Rf "$source_dir"
+          rm "$app_dir/bin/start.sh"
           echo "::endgroup::"
 
 
