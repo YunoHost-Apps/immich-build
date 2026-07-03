@@ -32,6 +32,7 @@ jobs:
       node_version:    ${{ steps.get-versions.outputs.node_version }}
       pnpm_version:    ${{ steps.get-versions.outputs.pnpm_version }}
       mise_version:    ${{ steps.get-versions.outputs.mise_version }}
+      uv_version:      ${{ steps.get-versions.outputs.uv_version }}
       python_version:  ${{ steps.get-versions.outputs.python_version }}
       libheif_version: ${{ steps.get-versions.outputs.libheif_version }}
       vips_version:    ${{ steps.get-versions.outputs.vips_version }}
@@ -70,11 +71,11 @@ jobs:
           echo "immich_version=$IMMICH_VERSION" >> $GITHUB_OUTPUT
 
           NODE_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/mise.toml \
-            | tomlq '.tools.node')
+            | tomlq -r '.tools.node')
           echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
 
           PNPM_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/mise.toml \
-            | tomlq '.tools.pnpm')
+            | tomlq -r '.tools.pnpm')
           echo "pnpm_version=$PNPM_VERSION" >> $GITHUB_OUTPUT
 
           MISE_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/server/Dockerfile \
@@ -156,7 +157,6 @@ jobs:
       CURL_OPTS: "--fail --location --retry 3 --retry-delay 2"
 
     outputs:
-      uv_version:   ${{ steps.build-immich.outputs.uv_version }}
       exec_time:    ${{ steps.build-immich.outputs.exec_time }}
       peak_ram:     ${{ steps.build-immich.outputs.peak_ram }}
       disk_used:    ${{ steps.build-immich.outputs.disk_used }}
@@ -243,6 +243,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          version: ${{ needs.prepare.outputs.uv_version }}
 
 
 
@@ -413,8 +415,6 @@ jobs:
           ######################################################################
           echo "::group::🧠 Building ML stack"
           cd "$source_dir/machine-learning"
-          uv_version=$(uv --version | cut -d' ' -f2)
-          echo "uv_version=$uv_version" >> $GITHUB_OUTPUT
           export UV_PYTHON_INSTALL_DIR="$ml_dir"
           uv venv "$ml_dir/venv" \
             --link-mode copy \
@@ -486,9 +486,9 @@ jobs:
           immich="${{ needs.prepare.outputs.immich_version }}"
           node="${{ needs.prepare.outputs.node_version }}"
           pnpm="${{ needs.prepare.outputs.pnpm_version }}"
+          mise="${{ needs.prepare.outputs.mise_version }}"
+          uv="${{ needs.prepare.outputs.uv_version }}"
           python="${{ needs.prepare.outputs.python_version }}"
-          mise="${{ steps.install-mise.outputs.mise_version }}"
-          uv="${{ steps.build-immich.outputs.uv_version }}"
           exec_time="${{ steps.build-immich.outputs.exec_time }}"
           peak_ram="${{ steps.build-immich.outputs.peak_ram }}"
           disk_used="${{ steps.build-immich.outputs.disk_used }}"
@@ -566,8 +566,6 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.prepare.outputs.should_build == 'true'
     outputs:
-      mise_version: ${{ steps.collect.outputs.mise }}
-      uv_version:   ${{ steps.collect.outputs.uv }}
       exec_time:    ${{ steps.collect.outputs.exec_time }}
       peak_ram:     ${{ steps.collect.outputs.peak_ram }}
       disk_used:    ${{ steps.collect.outputs.disk_used }}
@@ -592,25 +590,21 @@ jobs:
           immich="${{ needs.prepare.outputs.immich_version }}"
           node="${{ needs.prepare.outputs.node_version }}"
           pnpm="${{ needs.prepare.outputs.pnpm_version }}"
+          mise="${{ needs.prepare.outputs.mise_version }}"
+          uv="${{ needs.prepare.outputs.uv_version }}"
           python="${{ needs.prepare.outputs.python_version }}"
 
           first_meta=$(ls meta/meta-*.json 2>/dev/null | head -n1 || true)
           if [ -n "$first_meta" ]; then
-            mise=$(jq -r '.mise_version' "$first_meta")
-            uv=$(jq -r '.uv_version' "$first_meta")
             exec_time=$(jq -r '.exec_time' "$first_meta")
             peak_ram=$(jq -r '.peak_ram' "$first_meta")
             disk_used=$(jq -r '.disk_used' "$first_meta")
           else
-            mise="unknown"
-            uv="unknown"
             exec_time="unknown"
             peak_ram="unknown"
             disk_used="unknown"
           fi
 
-          echo "mise=$mise"           >> "$GITHUB_OUTPUT"
-          echo "uv=$uv"           >> "$GITHUB_OUTPUT"
           echo "exec_time=$exec_time" >> "$GITHUB_OUTPUT"
           echo "peak_ram=$peak_ram"   >> "$GITHUB_OUTPUT"
           echo "disk_used=$disk_used" >> "$GITHUB_OUTPUT"
@@ -732,9 +726,9 @@ jobs:
             **Build Environment**
             - Node.js: `${{ needs.prepare.outputs.node_version }}`
             - pnpm: `${{ needs.prepare.outputs.pnpm_version }}`
+            - mise: `${{ needs.prepare.outputs.mise_version }}`
+            - uv: `${{ needs.prepare.outputs.uv_version }}`
             - Python: `${{ needs.prepare.outputs.python_version }}`
-            - mise: `${{ needs.manifest.outputs.mise_version }}`
-            - uv: `${{ needs.manifest.outputs.uv_version }}`
 
             ---
 
