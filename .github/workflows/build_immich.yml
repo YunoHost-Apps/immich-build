@@ -49,6 +49,9 @@ jobs:
 
     steps:
 
+      - name: Install tomlq
+        run: pip install yq
+
       - name: Get upstream versions
         id: get-versions
         shell: bash
