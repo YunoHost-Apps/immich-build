@@ -31,6 +31,7 @@ jobs:
       immich_version:  ${{ steps.get-versions.outputs.immich_version }}
       node_version:    ${{ steps.get-versions.outputs.node_version }}
       pnpm_version:    ${{ steps.get-versions.outputs.pnpm_version }}
+      mise_version:    ${{ steps.get-versions.outputs.mise_version }}
       python_version:  ${{ steps.get-versions.outputs.python_version }}
       libheif_version: ${{ steps.get-versions.outputs.libheif_version }}
       vips_version:    ${{ steps.get-versions.outputs.vips_version }}
@@ -65,22 +66,32 @@ jobs:
           fi
           echo "immich_version=$IMMICH_VERSION" >> $GITHUB_OUTPUT
 
-          NODE_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/base-images/refs/heads/main/server/Dockerfile \
-            | sed -nE 's@.*node:([0-9]+\.[0-9]+\.[0-9]+).*@\1@p' | head -n1)
+          NODE_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/mise.toml \
+            | tomlq '.tools.node')
           echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
 
-          PNPM_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/package.json \
-            | jq -r '.packageManager | split("@")[1] | split(".")[0]')
+          PNPM_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/mise.toml \
+            | tomlq '.tools.pnpm')
           echo "pnpm_version=$PNPM_VERSION" >> $GITHUB_OUTPUT
 
-          PYTHON_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/heads/main/machine-learning/.python-version)
+          MISE_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/server/Dockerfile \
+            | sed -nE 's@.*mise:([0-9]+\.[0-9]+\.[0-9]+).*@\1@p')
+          echo "mise_version=$MISE_VERSION" >> $GITHUB_OUTPUT
+
+          UV_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/machine-learning/Dockerfile \
+            | sed -nE 's@.*uv:([0-9]+\.[0-9]+\.[0-9]+).*@\1@p')
+          echo "uv_version=$UV_VERSION" >> $GITHUB_OUTPUT
+
+          PYTHON_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/machine-learning/.python-version)
           echo "python_version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
 
-          LIBHEIF_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/base-images/main/server/sources/libheif.json | jq -r '.version')
-          echo "libheif_version=$LIBHEIF_VERSION" >> $GITHUB_OUTPUT
+          LIBHEIF_LATEST_VERSION_RELEASED=$(curl -s https://api.github.com/repos/strukturag/libheif/releases/latest \
+            | jq -r '.tag_name' | sed 's@^v@@')
+          echo "libheif_version=$LIBHEIF_LATEST_VERSION_RELEASED" >> $GITHUB_OUTPUT
 
-          VIPS_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/base-images/main/server/sources/libvips.json | jq -r '.version')
-          echo "vips_version=$VIPS_VERSION" >> $GITHUB_OUTPUT
+          VIPS_LATEST_VERSION_RELEASED=$(curl -s https://api.github.com/repos/libvips/libvips/releases/latest \
+            | jq -r '.tag_name' | sed 's@^v@@')
+          echo "vips_version=$VIPS_LATEST_VERSION_RELEASED" >> $GITHUB_OUTPUT
 
       - uses: actions/checkout@v7
 
@@ -142,7 +153,6 @@ jobs:
       CURL_OPTS: "--fail --location --retry 3 --retry-delay 2"
 
     outputs:
-      mise_version: ${{ steps.install-mise.outputs.mise_version }}
       uv_version:   ${{ steps.build-immich.outputs.uv_version }}
       exec_time:    ${{ steps.build-immich.outputs.exec_time }}
       peak_ram:     ${{ steps.build-immich.outputs.peak_ram }}
@@ -224,18 +234,9 @@ jobs:
           corepack use pnpm@${{ needs.prepare.outputs.pnpm_version }}
 
       - name: Install mise
-        id: install-mise
-        run: |
-          if [ "${{ matrix.arch }}" = "amd64" ]; then
-            curl -s https://mise.jdx.dev/mise-latest-linux-x64 > /usr/local/bin/mise
-          elif [ "${{ matrix.arch }}" = "arm64" ]; then
-            curl -s https://mise.jdx.dev/mise-latest-linux-arm64 > /usr/local/bin/mise
-          else
-            exit 1
-          fi
-          chmod 755 /usr/local/bin/mise
-          mise_version=$(mise version --json | jq -r .version)
-          echo "mise_version=$mise_version" >> $GITHUB_OUTPUT
+        uses: jdx/mise-action@v4
+        with:
+          version: ${{ needs.prepare.outputs.mise_version }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
@@ -248,6 +249,7 @@ jobs:
       #   - https://github.com/arter97/immich-native
       #   - https://github.com/community-scripts/ProxmoxVE/blob/main/install/immich-install.sh
       # Check for changes:
+      #   - https://github.com/immich-app/immich/blob/main/server/Dockerfile
       #   - https://github.com/immich-app/base-images/blob/main/server/Dockerfile
       #   - https://github.com/immich-app/base-images/blob/main/postgres/versions.yaml
       #   - ...
@@ -288,9 +290,9 @@ jobs:
           ######################################################################
           echo "::group::🧩 Building libheif"
           cd /tmp
-          curl $CURL_OPTS -o h.tgz \
+          curl $CURL_OPTS -o libheif.tgz \
             https://github.com/strukturag/libheif/releases/download/v${{ needs.prepare.outputs.libheif_version }}/libheif-${{ needs.prepare.outputs.libheif_version }}.tar.gz
-          tar xzf h.tgz
+          tar xzf libheif.tgz
           cd libheif-*
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX="$vips_dir" -DWITH_EXAMPLES=OFF -DWITH_DAV1D=ON -DWITH_AOM_ENCODER=ON -DWITH_LIBDE265=ON
@@ -306,9 +308,9 @@ jobs:
           export PKG_CONFIG_PATH="$vips_dir/lib/pkgconfig"
           export LD_LIBRARY_PATH="$vips_dir/lib"
           cd /tmp
-          curl $CURL_OPTS -o v.xz \
+          curl $CURL_OPTS -o libvips.xz \
             https://github.com/libvips/libvips/releases/download/v${{ needs.prepare.outputs.vips_version }}/vips-${{ needs.prepare.outputs.vips_version }}.tar.xz
-          tar xf v.xz
+          tar xf libvips.xz
           cd vips-*
           meson setup build --prefix="$vips_dir" --libdir=lib -Dintrospection=disabled -Dtiff=disabled
           ninja -C build install
