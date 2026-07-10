@@ -80,6 +80,12 @@ jobs:
 
           MISE_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/server/Dockerfile \
             | sed -nE 's@.*mise:([0-9]+\.[0-9]+\.[0-9]+).*@\1@p')
+          # Temporary fixing glibc requirement issue with mise > 2026.6.x and < 2026.7.4
+          if dpkg --compare-versions "$MISE_VERSION" lt 2026.7.4; then
+            MISE_LATEST_VERSION_RELEASED=$(curl -s https://api.github.com/repos/jdx/mise/releases/latest \
+              | jq -r '.tag_name' | sed 's@^v@@')
+            MISE_VERSION="$MISE_LATEST_VERSION_RELEASED"
+          fi
           echo "mise_version=$MISE_VERSION" >> $GITHUB_OUTPUT
 
           UV_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/machine-learning/Dockerfile \
