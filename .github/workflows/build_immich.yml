@@ -283,7 +283,7 @@ jobs:
           plugin_dir="${{ needs.prepare.outputs.plugin_dir }}"
           ml_dir="${{ needs.prepare.outputs.ml_dir }}"
           ml_cache_dir="${{ needs.prepare.outputs.ml_cache_dir }}"
-          mkdir -p "$install_dir" "$source_dir" "$vips_dir" "$app_dir" "$plugin_dir" "$ml_dir" "$ml_cache_dir"
+          mkdir -p "$install_dir" "$source_dir" "$vips_dir" "$plugin_dir" "$ml_dir" "$ml_cache_dir"
           echo "::endgroup::"
 
 
