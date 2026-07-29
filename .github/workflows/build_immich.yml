@@ -381,7 +381,7 @@ jobs:
           pnpm --filter @immich/sdk --filter @immich/plugin-sdk --filter immich build
           unset SHARP_IGNORE_GLOBAL_LIBVIPS
           export SHARP_FORCE_GLOBAL_LIBVIPS=true
-          pnpm --filter immich --prod --no-optional deploy "$app_dir" --force
+          pnpm --filter immich --prod --no-optional deploy "$app_dir"
           cp "$app_dir/package.json" "$app_dir/bin/"
           sed -i "s@^start@./start@g" "$app_dir/bin/immich-admin"
           echo "::endgroup::"
