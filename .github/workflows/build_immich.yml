@@ -283,7 +283,7 @@ jobs:
           plugin_dir="${{ needs.prepare.outputs.plugin_dir }}"
           ml_dir="${{ needs.prepare.outputs.ml_dir }}"
           ml_cache_dir="${{ needs.prepare.outputs.ml_cache_dir }}"
-          mkdir -p "$install_dir" "$source_dir" "$vips_dir" "$plugin_dir" "$ml_dir" "$ml_cache_dir"
+          mkdir -p "$install_dir" "$source_dir" "$vips_dir" "$ml_cache_dir"
           echo "::endgroup::"
 
 
@@ -421,6 +421,7 @@ jobs:
           ######################################################################
           echo "::group::🧠 Building ML stack"
           cd "$source_dir/machine-learning"
+          mkdir -p "$ml_dir"
           export UV_PYTHON_INSTALL_DIR="$ml_dir"
           uv venv "$ml_dir/venv" \
             --link-mode copy \
