@@ -377,11 +377,10 @@ jobs:
           cd "$source_dir/server"
           export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
           export CI=1
-          export SHARP_IGNORE_GLOBAL_LIBVIPS=true
           pnpm --filter @immich/sdk --filter @immich/plugin-sdk --filter immich build
-          unset SHARP_IGNORE_GLOBAL_LIBVIPS
-          export SHARP_FORCE_GLOBAL_LIBVIPS=true
           pnpm --filter immich --prod --no-optional deploy "$app_dir"
+          export SHARP_FORCE_GLOBAL_LIBVIPS=true
+          pnpm --dir "$app_dir/node_modules/sharp" exec npm run build
           cp "$app_dir/package.json" "$app_dir/bin/"
           sed -i "s@^start@./start@g" "$app_dir/bin/immich-admin"
           echo "::endgroup::"
@@ -394,7 +393,6 @@ jobs:
           cd "$source_dir"
           pnpm --filter @immich/sdk --filter immich-web --frozen-lockfile --force install
           unset SHARP_FORCE_GLOBAL_LIBVIPS
-          export SHARP_IGNORE_GLOBAL_LIBVIPS=true
           pnpm --filter @immich/sdk --filter immich-web --filter @immich/cli build
           pnpm --filter @immich/cli --prod --no-optional deploy "$app_dir/cli"
           cp -a web/build "$app_dir/www/"
