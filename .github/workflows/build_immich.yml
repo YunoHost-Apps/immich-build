@@ -79,7 +79,7 @@ jobs:
           echo "pnpm_version=$PNPM_VERSION" >> $GITHUB_OUTPUT
 
           MISE_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/server/Dockerfile \
-            | sed -nE 's@.*mise:([0-9]+\.[0-9]+\.[0-9]+).*@\1@p')
+            | sed -nE 's@.*mise:([0-9]+\.[0-9]+\.[0-9]+).*@\1@p' | head -n 1)
           # Temporary fixing glibc requirement issue with mise > 2026.6.x and < 2026.7.4
           if dpkg --compare-versions "$MISE_VERSION" lt 2026.7.4; then
             MISE_LATEST_VERSION_RELEASED=$(curl -s https://api.github.com/repos/jdx/mise/releases/latest \
@@ -89,7 +89,7 @@ jobs:
           echo "mise_version=$MISE_VERSION" >> $GITHUB_OUTPUT
 
           UV_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/machine-learning/Dockerfile \
-            | sed -nE 's@.*uv:([0-9]+\.[0-9]+\.[0-9]+).*@\1@p')
+            | sed -nE 's@.*uv:([0-9]+\.[0-9]+\.[0-9]+).*@\1@p' | head -n 1)
           echo "uv_version=$UV_VERSION" >> $GITHUB_OUTPUT
 
           PYTHON_VERSION=$(curl -s https://raw.githubusercontent.com/immich-app/immich/refs/tags/v$IMMICH_VERSION/machine-learning/.python-version)
@@ -382,6 +382,7 @@ jobs:
           export SHARP_FORCE_GLOBAL_LIBVIPS=true
           pnpm --dir "$app_dir/node_modules/sharp" exec npm run build
           cp "$app_dir/package.json" "$app_dir/bin/"
+          echo "{}" > "$app_dir/build-lock.json"
           sed -i "s@^start@./start@g" "$app_dir/bin/immich-admin"
           echo "::endgroup::"
 
@@ -408,9 +409,9 @@ jobs:
           export MISE_TRUSTED_CONFIG_PATHS="$source_dir"/mise.toml
           export MISE_DISABLE_TOOLS=github:jellyfin/jellyfin-ffmpeg
           mise //:plugins
-          mkdir -p "$plugin_dir/dist"
-          cp -r ./packages/plugin-core/dist "$plugin_dir/dist"
-          cp ./packages/plugin-core/manifest.json "$plugin_dir"
+          mkdir -p "$plugin_dir"
+          cp -r ./packages/plugin-core/dist "$plugin_dir/"
+          cp ./packages/plugin-core/manifest.json "$plugin_dir/"
           echo "::endgroup::"
 
 
