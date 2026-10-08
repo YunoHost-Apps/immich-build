@@ -382,6 +382,7 @@ jobs:
           export SHARP_FORCE_GLOBAL_LIBVIPS=true
           pnpm --dir "$app_dir/node_modules/sharp" exec npm run build
           cp "$app_dir/package.json" "$app_dir/bin/"
+          echo "{}" > "$app_dir/build-lock.json"
           sed -i "s@^start@./start@g" "$app_dir/bin/immich-admin"
           echo "::endgroup::"
 
@@ -408,9 +409,8 @@ jobs:
           export MISE_TRUSTED_CONFIG_PATHS="$source_dir"/mise.toml
           export MISE_DISABLE_TOOLS=github:jellyfin/jellyfin-ffmpeg
           mise //:plugins
-          mkdir -p "$plugin_dir/dist"
-          cp -r ./packages/plugin-core/dist "$plugin_dir/dist"
-          cp ./packages/plugin-core/manifest.json "$plugin_dir"
+          cp -r ./packages/plugin-core/dist "$plugin_dir/"
+          cp ./packages/plugin-core/manifest.json "$plugin_dir/"
           echo "::endgroup::"
 
 
